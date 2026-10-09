@@ -1,0 +1,2 @@
+using Npgsql;
+namespace PaymentService.Infrastructure; public static class DatabaseInitializer { public static async Task InitializeAsync(string cs) { for (var i = 1; ; i++) try { await using var db = new NpgsqlConnection(cs); await db.OpenAsync(); await using var c = new NpgsqlCommand("CREATE TABLE IF NOT EXISTS payment(id SERIAL PRIMARY KEY,payment_uid uuid UNIQUE NOT NULL,status varchar(20) NOT NULL CHECK(status IN ('PAID','CANCELED')),price int NOT NULL);", db); await c.ExecuteNonQueryAsync(); return; } catch when (i < 30) { await Task.Delay(2000); } } }

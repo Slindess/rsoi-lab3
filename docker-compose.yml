@@ -1,20 +1,48 @@
-version: "3"
 services:
   postgres:
-    image: library/postgres:13
-    container_name: postgres
+    image: postgres:13
     restart: on-failure
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: "postgres"
+      POSTGRES_PASSWORD: postgres
       POSTGRES_DB: postgres
     volumes:
       - db-data:/var/lib/postgresql/data
-      - ./postgres/:/docker-entrypoint-initdb.d/
-    ports:
-      - "5432:5432"
-
-# TODO добавить сервисы
-
+      - ./postgres:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  loyalty-service:
+    build: { context: ., dockerfile: services/LoyaltyService/Dockerfile }
+    environment:
+      ASPNETCORE_URLS: http://+:8050
+      ConnectionStrings__Database: Host=postgres;Database=loyalties;Username=program;Password=test
+    ports: ["8050:8050"]
+    depends_on: { postgres: { condition: service_healthy } }
+  payment-service:
+    build: { context: ., dockerfile: services/PaymentService/Dockerfile }
+    environment:
+      ASPNETCORE_URLS: http://+:8060
+      ConnectionStrings__Database: Host=postgres;Database=payments;Username=program;Password=test
+    ports: ["8060:8060"]
+    depends_on: { postgres: { condition: service_healthy } }
+  reservation-service:
+    build: { context: ., dockerfile: services/ReservationService/Dockerfile }
+    environment:
+      ASPNETCORE_URLS: http://+:8070
+      ConnectionStrings__Database: Host=postgres;Database=reservations;Username=program;Password=test
+    ports: ["8070:8070"]
+    depends_on: { postgres: { condition: service_healthy } }
+  gateway-service:
+    build: { context: ., dockerfile: services/GatewayService/Dockerfile }
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      Services__Loyalty: http://loyalty-service:8050
+      Services__Payment: http://payment-service:8060
+      Services__Reservation: http://reservation-service:8070
+    ports: ["8080:8080"]
+    depends_on: [loyalty-service, payment-service, reservation-service]
 volumes:
   db-data:

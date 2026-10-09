@@ -1,0 +1,6 @@
+using Npgsql;
+namespace ReservationService.Infrastructure;
+public static class DatabaseInitializer
+{
+    public static async Task InitializeAsync(string cs) { for (var i = 1; ; i++) try { await using var db = new NpgsqlConnection(cs); await db.OpenAsync(); const string sql = """CREATE TABLE IF NOT EXISTS hotels(id SERIAL PRIMARY KEY,hotel_uid uuid UNIQUE NOT NULL,name varchar(255) NOT NULL,country varchar(80) NOT NULL,city varchar(80) NOT NULL,address varchar(255) NOT NULL,stars int NOT NULL,price int NOT NULL); CREATE TABLE IF NOT EXISTS reservation(id SERIAL PRIMARY KEY,reservation_uid uuid UNIQUE NOT NULL,username varchar(80) NOT NULL,payment_uid uuid NOT NULL,hotel_id int NOT NULL REFERENCES hotels(id),status varchar(20) NOT NULL CHECK(status IN ('PAID','CANCELED')),start_date date NOT NULL,end_date date NOT NULL); INSERT INTO hotels(hotel_uid,name,country,city,address,stars,price) VALUES('049161bb-badd-4fa8-9d90-87c9a82b0668','Ararat Park Hyatt Moscow','Россия','Москва','Неглинная ул., 4',5,10000) ON CONFLICT(hotel_uid) DO NOTHING;"""; await using var cmd = new NpgsqlCommand(sql, db); await cmd.ExecuteNonQueryAsync(); return; } catch when (i < 30) { await Task.Delay(2000); } }
+}
